@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import structlog
 import tiktoken
@@ -11,18 +11,30 @@ from openai import AsyncOpenAI
 
 from rag_engine.config import settings
 from rag_engine.models import Citation, QueryResult, RetrievedChunk
-from rag_engine.storage import VectorStore
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from rag_engine.storage import VectorStore
 
 logger = structlog.get_logger()
 
-SYSTEM_PROMPT = """You are a precise research assistant. Answer the user's question using ONLY the provided context documents. Follow these rules strictly:
-
-1. Base your answer exclusively on the provided context. Do not use prior knowledge.
-2. If the context does not contain enough information, say "I don't have enough information to answer this question based on the available documents."
-3. Cite your sources using [Source N] notation, where N corresponds to the context chunk number.
-4. Be specific and factual. Prefer direct quotes when the context contains relevant passages.
-5. Structure your answer clearly with paragraphs for complex topics.
-6. If data involves numbers, percentages, or financial figures, quote them exactly as they appear in the sources."""
+SYSTEM_PROMPT = (
+    "You are a precise research assistant. Answer the user's question "
+    "using ONLY the provided context documents. Follow these rules strictly:\n\n"
+    "1. Base your answer exclusively on the provided context. "
+    "Do not use prior knowledge.\n"
+    "2. If the context does not contain enough information, say "
+    '"I don\'t have enough information to answer this question '
+    'based on the available documents."\n'
+    "3. Cite your sources using [Source N] notation, where N "
+    "corresponds to the context chunk number.\n"
+    "4. Be specific and factual. Prefer direct quotes when the "
+    "context contains relevant passages.\n"
+    "5. Structure your answer clearly with paragraphs for complex topics.\n"
+    "6. If data involves numbers, percentages, or financial figures, "
+    "quote them exactly as they appear in the sources."
+)
 
 CONTEXT_TEMPLATE = """--- Context Document {index} ---
 Source: {source}
@@ -61,8 +73,12 @@ class QueryPipeline:
         retrieval_time = (time.monotonic() - start) * 1000
 
         if not chunks:
+            no_info_msg = (
+                "I don't have enough information to answer this question. "
+                "No relevant documents were found."
+            )
             return QueryResult(
-                answer="I don't have enough information to answer this question. No relevant documents were found.",
+                answer=no_info_msg,
                 citations=[],
                 confidence=0.0,
                 query=question,
@@ -107,7 +123,10 @@ class QueryPipeline:
         chunks = await self._retrieve(question, top_k, namespace, search_method)
 
         if not chunks:
-            yield "I don't have enough information to answer this question. No relevant documents were found."
+            yield (
+                "I don't have enough information to answer this question. "
+                "No relevant documents were found."
+            )
             return
 
         context, used_chunks = self._build_context(chunks)
@@ -163,8 +182,16 @@ class QueryPipeline:
         total_tokens = 0
 
         for i, chunk in enumerate(chunks, 1):
-            section_info = f"Section: {chunk.metadata.section}\n" if chunk.metadata.section else ""
-            page_info = f"Page: {chunk.metadata.page_number}\n" if chunk.metadata.page_number else ""
+            section_info = (
+                f"Section: {chunk.metadata.section}\n"
+                if chunk.metadata.section
+                else ""
+            )
+            page_info = (
+                f"Page: {chunk.metadata.page_number}\n"
+                if chunk.metadata.page_number
+                else ""
+            )
 
             block = CONTEXT_TEMPLATE.format(
                 index=i,

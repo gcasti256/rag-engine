@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 
 from rag_engine.config import settings
-from rag_engine.models import QueryResult
+
+if TYPE_CHECKING:
+    from rag_engine.models import QueryResult
 
 
 @dataclass
@@ -80,7 +83,8 @@ async def faithfulness(
     """
     client = client or AsyncOpenAI(api_key=settings.openai_api_key)
 
-    prompt = f"""Rate how faithful the following answer is to the provided context on a scale of 0 to 1.
+    prompt = f"""Rate how faithful the following answer is to the provided context \
+on a scale of 0 to 1.
 0 = answer contains claims not supported by context, 1 = every claim is grounded in context.
 
 Context: {context[:3000]}

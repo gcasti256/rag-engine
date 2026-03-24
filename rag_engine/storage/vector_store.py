@@ -5,11 +5,11 @@ from __future__ import annotations
 import numpy as np
 import structlog
 from rank_bm25 import BM25Okapi
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, select
 
 from rag_engine.config import settings
 from rag_engine.database import ChunkRecord, DocumentRecord, async_session
-from rag_engine.models import Document, RetrievedChunk, ChunkMetadata, TextChunk
+from rag_engine.models import ChunkMetadata, Document, RetrievedChunk, TextChunk
 from rag_engine.storage.embeddings import EmbeddingService
 
 logger = structlog.get_logger()
@@ -50,7 +50,7 @@ class VectorStore:
         embeddings = await self.embeddings.embed_texts(texts)
 
         async with async_session() as session:
-            for chunk, embedding in zip(chunks, embeddings):
+            for chunk, embedding in zip(chunks, embeddings, strict=True):
                 record = ChunkRecord(
                     id=chunk.id,
                     document_id=chunk.metadata.document_id,

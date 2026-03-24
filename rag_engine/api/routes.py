@@ -58,7 +58,7 @@ async def health_check() -> HealthResponse:
 
 @router.post("/ingest", response_model=IngestResponse, tags=["ingestion"])
 async def ingest_document(
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
     namespace: str = Form(default="default"),
     title: str = Form(default=""),
 ) -> IngestResponse:
@@ -82,10 +82,10 @@ async def ingest_document(
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("ingest.error", error=str(e), filename=file.filename)
-        raise HTTPException(status_code=500, detail="Ingestion failed")
+        raise HTTPException(status_code=500, detail="Ingestion failed") from e
 
 
 # ------------------------------------------------------------------
@@ -123,7 +123,7 @@ async def query_documents(
         return result
     except Exception as e:
         logger.error("query.error", error=str(e), question=question)
-        raise HTTPException(status_code=500, detail="Query processing failed")
+        raise HTTPException(status_code=500, detail="Query processing failed") from e
 
 
 @router.post("/query/stream", tags=["query"])

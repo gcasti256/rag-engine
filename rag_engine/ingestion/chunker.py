@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, ClassVar
+
 import tiktoken
 
 from rag_engine.config import settings
-from rag_engine.ingestion.extractors import ExtractedPage
 from rag_engine.models import ChunkMetadata, TextChunk
+
+if TYPE_CHECKING:
+    from rag_engine.ingestion.extractors import ExtractedPage
 
 
 class RecursiveChunker:
@@ -16,7 +20,7 @@ class RecursiveChunker:
     preserving semantic coherence within chunks.
     """
 
-    SEPARATORS = ["\n\n", "\n", ". ", ", ", " ", ""]
+    SEPARATORS: ClassVar[list[str]] = ["\n\n", "\n", ". ", ", ", " ", ""]
 
     def __init__(
         self,
@@ -45,7 +49,7 @@ class RecursiveChunker:
 
         for page in pages:
             raw_chunks = self._split_text(page.content)
-            for i, chunk_text in enumerate(raw_chunks):
+            for _i, chunk_text in enumerate(raw_chunks):
                 token_count = self.count_tokens(chunk_text)
                 metadata = ChunkMetadata(
                     source=source,

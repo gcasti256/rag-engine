@@ -21,38 +21,54 @@ Production-grade Retrieval-Augmented Generation pipeline with pgvector, hybrid s
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                      FastAPI REST API                     │
-│  POST /ingest  ·  POST /query  ·  GET /documents         │
-├──────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌─────────────────┐    ┌──────────────────────────────┐ │
-│  │   Ingestion      │    │   Query Pipeline              │ │
-│  │   Pipeline       │    │                              │ │
-│  │                  │    │  Question                    │ │
-│  │  Extract → Chunk │    │    ↓                         │ │
-│  │    ↓             │    │  Hybrid Retrieval            │ │
-│  │  Embed → Store   │    │  (Vector + BM25 + RRF)      │ │
-│  │                  │    │    ↓                         │ │
-│  │  Extractors:     │    │  Context Assembly            │ │
-│  │  · PDF (PyMuPDF) │    │  (token-aware truncation)    │ │
-│  │  · Markdown      │    │    ↓                         │ │
-│  │  · Plain text    │    │  LLM Generation              │ │
-│  │  · CSV           │    │  (with source citations)     │ │
-│  └────────┬─────────┘    └──────────┬───────────────────┘ │
-│           │                         │                     │
-│  ┌────────▼─────────────────────────▼───────────────────┐ │
-│  │              Vector Store (pgvector)                   │ │
-│  │  · Cosine similarity search                           │ │
-│  │  · BM25 keyword search                                │ │
-│  │  · Reciprocal Rank Fusion                             │ │
-│  │  · Namespace isolation                                │ │
-│  └───────────────────────┬──────────────────────────────┘ │
-│                          │                                │
-├──────────────────────────▼────────────────────────────────┤
-│  PostgreSQL 16 + pgvector  ·  OpenAI Embeddings + GPT     │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph api["FastAPI REST API"]
+        direction LR
+        Ingest["POST /ingest"]
+        Query["POST /query"]
+        Stream["POST /query/stream"]
+        Docs["GET /documents"]
+    end
+
+    subgraph ingestion["Ingestion Pipeline"]
+        direction TB
+        Extract["Extract\nPDF · Markdown · Text · CSV"] --> Chunk["Chunk\nRecursive splitting\nwith overlap"]
+        Chunk --> Embed["Embed\nOpenAI text-embedding-3-small"]
+        Embed --> Store["Store\npgvector"]
+    end
+
+    subgraph query["Query Pipeline"]
+        direction TB
+        Question["Question"] --> Hybrid["Hybrid Retrieval\nVector + BM25 + RRF"]
+        Hybrid --> Context["Context Assembly\nToken-aware truncation"]
+        Context --> Generate["LLM Generation\nwith source citations"]
+    end
+
+    subgraph storage["PostgreSQL 16 + pgvector"]
+        direction LR
+        Vector["Cosine Similarity\nSearch"]
+        BM25["BM25 Keyword\nSearch"]
+        RRF["Reciprocal Rank\nFusion"]
+        NS["Namespace\nIsolation"]
+    end
+
+    subgraph eval["Evaluation Framework"]
+        direction LR
+        Rel["Answer\nRelevance"] ~~~ Faith["Faithfulness"] ~~~ Prec["Context\nPrecision"]
+    end
+
+    api --> ingestion
+    api --> query
+    ingestion --> storage
+    query --> storage
+    query --> eval
+
+    style api fill:#1a1a2e,stroke:#6366f1,color:#e2e8f0
+    style ingestion fill:#1e3a5f,stroke:#0ea5e9,color:#e2e8f0
+    style query fill:#14532d,stroke:#22c55e,color:#e2e8f0
+    style storage fill:#312e81,stroke:#818cf8,color:#e2e8f0
+    style eval fill:#4a1942,stroke:#c084fc,color:#e2e8f0
 ```
 
 ## Quick Start
@@ -233,6 +249,28 @@ Metrics:
 - **Docker Compose** — One-command deployment
 - **pytest** — Unit and integration testing
 - **GitHub Actions** — CI/CD pipeline
+
+## Production at Scale
+
+rag-engine is built on production-proven components. Here's how it scales for enterprise workloads:
+
+| Component | Development | Production at Scale |
+|-----------|------------|-------------------|
+| **Vector Store** | Single PostgreSQL instance | pgvector on Aurora/RDS with read replicas, or dedicated Pinecone/Qdrant cluster |
+| **Embedding Pipeline** | Sequential processing | Parallel batch embedding with async workers and retry queues |
+| **Chunking** | In-process | Distributed processing via Celery/SQS for large document ingestion (10K+ docs) |
+| **Query Cache** | None | Redis semantic cache — hash similar queries to avoid redundant LLM calls |
+| **Multi-tenancy** | Namespace parameter | Row-level security in PostgreSQL + namespace-scoped API keys |
+| **Monitoring** | Structured logs | Latency/token/cost metrics exported to Prometheus, retrieval quality tracked via eval framework |
+
+### Why This Matters in Financial Services
+
+RAG systems in regulated industries face unique requirements:
+
+- **Source Attribution** — Every generated answer includes citations with document source, page number, and relevance score. This is critical for compliance teams reviewing AI-generated financial summaries.
+- **Data Isolation** — Namespace isolation ensures that confidential documents (M&A analysis, internal memos) are never retrievable outside their designated scope. No cross-tenant data leakage.
+- **Evaluation as Governance** — The built-in eval framework (relevance, faithfulness, precision) provides quantitative evidence that the system is grounding answers in real documents, not hallucinating — a regulatory requirement for AI in financial advisory.
+- **Audit Trail** — Every query logs the retrieval time, generation time, tokens used, and confidence score. This enables both cost accounting and quality monitoring at scale.
 
 ## Project Structure
 

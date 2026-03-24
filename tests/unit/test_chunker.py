@@ -78,7 +78,10 @@ class TestRecursiveChunker:
     def test_overlap_present(self) -> None:
         """Chunks should have overlapping content when overlap > 0."""
         chunker = RecursiveChunker(chunk_size=15, chunk_overlap=5)
-        text = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november."
+        text = (
+            "Alpha bravo charlie delta echo foxtrot golf hotel "
+            "india juliet kilo lima mike november."
+        )
         pages = [ExtractedPage(content=text)]
         chunks = chunker.chunk_pages(pages, document_id="doc1", source="test.txt")
 
@@ -91,7 +94,11 @@ class TestRecursiveChunker:
     def test_paragraph_boundary_splitting(self) -> None:
         """Chunker should prefer splitting at paragraph boundaries."""
         chunker = RecursiveChunker(chunk_size=10, chunk_overlap=2)
-        text = "First paragraph with several words of content here.\n\nSecond paragraph with more words of content here.\n\nThird paragraph with even more words of content."
+        text = (
+            "First paragraph with several words of content here.\n\n"
+            "Second paragraph with more words of content here.\n\n"
+            "Third paragraph with even more words of content."
+        )
         pages = [ExtractedPage(content=text)]
         chunks = chunker.chunk_pages(pages, document_id="doc1", source="test.txt")
         assert len(chunks) >= 2

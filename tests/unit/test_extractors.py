@@ -55,7 +55,7 @@ class TestTextExtractor:
     def test_unicode_handling(self) -> None:
         """Unicode characters should be handled correctly."""
         extractor = TextExtractor()
-        text = "Revenue: €1.5M • Growth: 12% → 15%".encode("utf-8")
+        text = "Revenue: €1.5M • Growth: 12% → 15%".encode()
         result = extractor.extract(text, "unicode.txt")
         assert "€1.5M" in result.pages[0].content
 

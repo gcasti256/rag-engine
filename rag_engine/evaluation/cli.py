@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 from rag_engine.evaluation.metrics import evaluate_response
-from rag_engine.models import QueryResult
 from rag_engine.query.pipeline import QueryPipeline
 from rag_engine.storage import VectorStore
 
@@ -82,7 +81,8 @@ async def run_eval(eval_file: str, namespace: str = "default") -> None:
     print(f"  Avg Relevance:      {total_relevance / n:.3f}")
     print(f"  Avg Faithfulness:   {total_faithfulness / n:.3f}")
     print(f"  Avg Precision:      {total_precision / n:.3f}")
-    print(f"  Avg Overall:        {(total_relevance + total_faithfulness + total_precision) / (3 * n):.3f}")
+    avg_overall = (total_relevance + total_faithfulness + total_precision) / (3 * n)
+    print(f"  Avg Overall:        {avg_overall:.3f}")
 
     # Write results to file
     output_path = path.with_suffix(".results.json")

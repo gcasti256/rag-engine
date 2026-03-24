@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class DocumentType(str, Enum):
+class DocumentType(StrEnum):
     PDF = "pdf"
     MARKDOWN = "markdown"
     TEXT = "text"

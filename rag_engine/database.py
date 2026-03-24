@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-
-from pgvector.sqlalchemy import Vector
 
 from rag_engine.config import settings
 

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 
 from rag_engine.config import settings
 from rag_engine.ingestion.chunker import RecursiveChunker
 from rag_engine.ingestion.extractors import extract_text
-from rag_engine.models import Document, DocumentType, IngestResponse, TextChunk
-from rag_engine.storage import VectorStore
+from rag_engine.models import Document, DocumentType, IngestResponse
+
+if TYPE_CHECKING:
+    from rag_engine.storage import VectorStore
 
 logger = structlog.get_logger()
 
