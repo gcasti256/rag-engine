@@ -41,7 +41,10 @@ class ChunkRecord(Base):
     __tablename__ = "chunks"
 
     id = Column(String, primary_key=True)
-    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    document_id = Column(
+        String, ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     content = Column(Text, nullable=False)
     embedding = Column(Vector(settings.embedding_dimensions))
     source = Column(String, nullable=False)

@@ -12,7 +12,6 @@ from fastapi.security import APIKeyHeader
 
 from rag_engine.config import settings
 from rag_engine.ingestion.pipeline import IngestionPipeline
-from rag_engine.api.schemas import QueryRequest
 from rag_engine.models import (
     Document,
     HealthResponse,
@@ -24,6 +23,8 @@ from rag_engine.storage import EmbeddingService, VectorStore
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from rag_engine.api.schemas import QueryRequest
 
 logger = structlog.get_logger()
 
@@ -110,7 +111,8 @@ async def ingest_document(
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+            detail=f"Unsupported file type '{suffix}'. "
+            f"Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
         )
 
     content = await file.read()

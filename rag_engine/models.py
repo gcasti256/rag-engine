@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -26,7 +26,7 @@ class ChunkMetadata(BaseModel):
     section: str = ""
     chunk_index: int = 0
     total_chunks: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TextChunk(BaseModel):
@@ -48,7 +48,7 @@ class Document(BaseModel):
     namespace: str = "default"
     chunk_count: int = 0
     total_tokens: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Citation(BaseModel):

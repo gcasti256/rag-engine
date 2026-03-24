@@ -62,7 +62,7 @@ class TestIngestEndpoint:
 class TestQueryEndpoint:
     def test_query_empty_question(self, client: TestClient) -> None:
         """Query should reject empty questions."""
-        response = client.post("/query", data={"question": ""})
+        response = client.post("/query", json={"question": ""})
         assert response.status_code in (400, 422)
 
     def test_query_success(self, client: TestClient) -> None:
@@ -78,7 +78,7 @@ class TestQueryEndpoint:
             mock_pipeline.query = AsyncMock(return_value=mock_result)
             response = client.post(
                 "/query",
-                data={"question": "What was revenue?"},
+                json={"question": "What was revenue?"},
             )
             assert response.status_code == 200
             data = response.json()
@@ -89,7 +89,7 @@ class TestQueryEndpoint:
         """Query should reject invalid search methods."""
         response = client.post(
             "/query",
-            data={"question": "test?", "search_method": "invalid"},
+            json={"question": "test?", "search_method": "invalid"},
         )
         assert response.status_code == 400
 
