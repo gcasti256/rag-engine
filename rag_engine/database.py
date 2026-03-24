@@ -7,7 +7,12 @@ from functools import lru_cache
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
 from sqlalchemy import text as sa_text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 from rag_engine.config import settings

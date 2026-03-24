@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
@@ -18,6 +18,9 @@ from rag_engine.models import (
 )
 from rag_engine.query.pipeline import QueryPipeline
 from rag_engine.storage import EmbeddingService, VectorStore
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = structlog.get_logger()
 

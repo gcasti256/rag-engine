@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING
 import structlog
 import tiktoken
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk
 
 from rag_engine.config import settings
 from rag_engine.models import Citation, QueryResult, RetrievedChunk
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from openai.types.chat import ChatCompletionChunk
 
     from rag_engine.storage import VectorStore
 
