@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     max_context_tokens: int = 4096
 
     # API
+    api_key: str = ""  # Optional API key; if set, all endpoints require X-API-Key header
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_workers: int = 4

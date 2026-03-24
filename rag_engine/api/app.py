@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from rag_engine.api.routes import router
 from rag_engine.config import settings
-from rag_engine.database import init_db
+from rag_engine.database import dispose_engine, init_db
 from rag_engine.logging import setup_logging
 
 if TYPE_CHECKING:
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     await init_db()
     yield
+    await dispose_engine()
 
 
 def create_app() -> FastAPI:

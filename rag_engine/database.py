@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -43,7 +41,7 @@ class ChunkRecord(Base):
     __tablename__ = "chunks"
 
     id = Column(String, primary_key=True)
-    document_id = Column(String, nullable=False, index=True)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     content = Column(Text, nullable=False)
     embedding = Column(Vector(settings.embedding_dimensions))
     source = Column(String, nullable=False)
@@ -58,15 +56,28 @@ class ChunkRecord(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
-@lru_cache(maxsize=1)
+_engine: AsyncEngine | None = None
+
+
 def get_engine() -> AsyncEngine:
     """Lazily create the async engine."""
-    return create_async_engine(
-        settings.database_url,
-        pool_size=20,
-        max_overflow=10,
-        pool_pre_ping=True,
-    )
+    global _engine
+    if _engine is None:
+        _engine = create_async_engine(
+            settings.database_url,
+            pool_size=20,
+            max_overflow=10,
+            pool_pre_ping=True,
+        )
+    return _engine
+
+
+async def dispose_engine() -> None:
+    """Dispose of the engine and release all connections."""
+    global _engine
+    if _engine is not None:
+        await _engine.dispose()
+        _engine = None
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
@@ -88,10 +99,3 @@ async def init_db() -> None:
             sa_text("CREATE EXTENSION IF NOT EXISTS vector")
         )
         await conn.run_sync(Base.metadata.create_all)
-
-
-async def get_session() -> AsyncSession:
-    """Get a database session."""
-    session: AsyncSession
-    async with get_session_factory()() as session:
-        return session

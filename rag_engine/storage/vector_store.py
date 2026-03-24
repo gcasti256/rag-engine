@@ -125,6 +125,8 @@ class VectorStore:
 
         return chunks
 
+    _BM25_MAX_CHUNKS = 1000
+
     async def keyword_search(
         self,
         query: str,
@@ -133,7 +135,28 @@ class VectorStore:
     ) -> list[RetrievedChunk]:
         """BM25 keyword search over chunk content."""
         async with async_session() as session:
-            stmt = select(ChunkRecord).where(ChunkRecord.namespace == namespace)
+            # Count total chunks to warn if corpus exceeds limit
+            count_stmt = (
+                select(func.count())
+                .select_from(ChunkRecord)
+                .where(ChunkRecord.namespace == namespace)
+            )
+            total_count = (await session.execute(count_stmt)).scalar_one()
+
+            if total_count > self._BM25_MAX_CHUNKS:
+                logger.warning(
+                    "keyword_search.corpus_truncated",
+                    total_chunks=total_count,
+                    limit=self._BM25_MAX_CHUNKS,
+                    namespace=namespace,
+                )
+
+            stmt = (
+                select(ChunkRecord)
+                .where(ChunkRecord.namespace == namespace)
+                .order_by(ChunkRecord.created_at.desc())
+                .limit(self._BM25_MAX_CHUNKS)
+            )
             results = await session.execute(stmt)
             records = results.scalars().all()
 
@@ -187,8 +210,9 @@ class VectorStore:
         keyword_weight: float = 0.3,
     ) -> list[RetrievedChunk]:
         """Combine vector and keyword search with reciprocal rank fusion."""
+        hybrid_threshold = max(settings.similarity_threshold * 0.7, 0.3)
         vector_results = await self.vector_search(
-            query, top_k=top_k * 2, namespace=namespace, threshold=0.0
+            query, top_k=top_k * 2, namespace=namespace, threshold=hybrid_threshold
         )
         keyword_results = await self.keyword_search(
             query, top_k=top_k * 2, namespace=namespace

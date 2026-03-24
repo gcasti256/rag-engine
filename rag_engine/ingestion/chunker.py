@@ -28,6 +28,10 @@ class RecursiveChunker:
         chunk_overlap: int = settings.chunk_overlap,
         encoding_name: str = "cl100k_base",
     ):
+        if chunk_overlap >= chunk_size:
+            raise ValueError(
+                f"chunk_overlap ({chunk_overlap}) must be less than chunk_size ({chunk_size})"
+            )
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.encoder = tiktoken.get_encoding(encoding_name)

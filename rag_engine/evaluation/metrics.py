@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -164,9 +165,11 @@ async def evaluate_response(
     context_texts = [c.content for c in query_result.citations]
     full_context = "\n\n".join(context_texts)
 
-    rel = await answer_relevance(query_result.query, query_result.answer, client)
-    faith = await faithfulness(query_result.answer, full_context, client)
-    prec = await context_precision(query_result.query, context_texts, client)
+    rel, faith, prec = await asyncio.gather(
+        answer_relevance(query_result.query, query_result.answer, client),
+        faithfulness(query_result.answer, full_context, client),
+        context_precision(query_result.query, context_texts, client),
+    )
 
     overall = (rel.score + faith.score + prec.score) / 3
 

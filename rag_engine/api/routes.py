@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 import structlog
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from fastapi.security import APIKeyHeader
 
 from rag_engine.config import settings
 from rag_engine.ingestion.pipeline import IngestionPipeline
+from rag_engine.api.schemas import QueryRequest
 from rag_engine.models import (
     Document,
     HealthResponse,
@@ -24,7 +27,21 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-router = APIRouter()
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def verify_api_key(api_key: str | None = Depends(_api_key_header)) -> None:
+    """Verify API key if one is configured. Skip auth if no key is set."""
+    if not settings.api_key:
+        return
+    if api_key != settings.api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+router = APIRouter(dependencies=[Depends(verify_api_key)])
+
+MAX_UPLOAD_SIZE = settings.max_file_size_mb * 1024 * 1024  # 50MB default
+ALLOWED_EXTENSIONS = {".pdf", ".md", ".txt", ".csv"}
 
 # Shared instances
 _embedding_service = EmbeddingService()
@@ -63,6 +80,7 @@ async def health_check() -> HealthResponse:
 
 @router.post("/ingest", response_model=IngestResponse, tags=["ingestion"])
 async def ingest_document(
+    request: Request,
     file: UploadFile = File(...),  # noqa: B008
     namespace: str = Form(default="default"),
     title: str = Form(default=""),
@@ -71,17 +89,45 @@ async def ingest_document(
 
     Supported formats: PDF, Markdown, plain text, CSV.
     """
+    # Check Content-Length header if present
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb}MB",
+        )
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
+
+    # Sanitize filename: strip path components to prevent directory traversal
+    safe_filename = PurePosixPath(file.filename).name
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # Check file extension
+    suffix = PurePosixPath(safe_filename).suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
 
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="File is empty")
 
+    # Double-check actual content size
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb}MB",
+        )
+
     try:
         result = await _ingestion_pipeline.ingest(
             content=content,
-            filename=file.filename,
+            filename=safe_filename,
             namespace=namespace,
             title=title or None,
         )
@@ -89,7 +135,7 @@ async def ingest_document(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error("ingest.error", error=str(e), filename=file.filename)
+        logger.error("ingest.error", error=str(e), filename=safe_filename)
         raise HTTPException(status_code=500, detail="Ingestion failed") from e
 
 
@@ -99,35 +145,21 @@ async def ingest_document(
 
 
 @router.post("/query", response_model=QueryResult, tags=["query"])
-async def query_documents(
-    question: str = Form(...),
-    top_k: int = Form(default=settings.default_top_k),
-    namespace: str = Form(default="default"),
-    search_method: str = Form(default="hybrid"),
-) -> QueryResult:
+async def query_documents(body: QueryRequest) -> QueryResult:
     """Query the RAG pipeline with a natural language question.
 
     Returns an answer with source citations and confidence score.
     """
-    if not question.strip():
-        raise HTTPException(status_code=400, detail="Question is required")
-
-    if search_method not in ("hybrid", "vector", "keyword"):
-        raise HTTPException(
-            status_code=400,
-            detail="search_method must be one of: hybrid, vector, keyword",
-        )
-
     try:
         result = await _query_pipeline.query(
-            question=question,
-            top_k=top_k,
-            namespace=namespace,
-            search_method=search_method,
+            question=body.question,
+            top_k=body.top_k,
+            namespace=body.namespace,
+            search_method=body.search_method,
         )
         return result
     except Exception as e:
-        logger.error("query.error", error=str(e), question=question)
+        logger.error("query.error", error=str(e), question=body.question)
         raise HTTPException(status_code=500, detail="Query processing failed") from e
 
 
