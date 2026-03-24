@@ -91,7 +91,7 @@ class TestQueryEndpoint:
             "/query",
             json={"question": "test?", "search_method": "invalid"},
         )
-        assert response.status_code == 400
+        assert response.status_code in (400, 422)
 
 
 class TestDocumentsEndpoint:

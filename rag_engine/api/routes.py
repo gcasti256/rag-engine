@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import StreamingResponse
 from fastapi.security import APIKeyHeader
 
-from rag_engine.api.schemas import QueryRequest  # noqa: TCH001 — FastAPI needs runtime access
+from rag_engine.api.schemas import QueryRequest  # noqa: TC001 — FastAPI needs runtime access
 from rag_engine.config import settings
 from rag_engine.ingestion.pipeline import IngestionPipeline
 from rag_engine.models import (
