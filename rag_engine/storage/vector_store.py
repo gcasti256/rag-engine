@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select
 
 from rag_engine.config import settings
 from rag_engine.database import ChunkRecord, DocumentRecord, async_session
-from rag_engine.models import ChunkMetadata, Document, RetrievedChunk, TextChunk
+from rag_engine.models import ChunkMetadata, Document, DocumentType, RetrievedChunk, TextChunk
 from rag_engine.storage.embeddings import EmbeddingService
 
 logger = structlog.get_logger()
@@ -240,14 +240,14 @@ class VectorStore:
 
         return [
             Document(
-                id=r.id,
-                filename=r.filename,
-                document_type=r.document_type,
-                title=r.title or "",
-                namespace=r.namespace or "default",
-                chunk_count=r.chunk_count or 0,
-                total_tokens=r.total_tokens or 0,
-                created_at=r.created_at,
+                id=str(r.id),
+                filename=str(r.filename),
+                document_type=DocumentType(str(r.document_type)),
+                title=str(r.title or ""),
+                namespace=str(r.namespace or "default"),
+                chunk_count=int(r.chunk_count or 0),
+                total_tokens=int(r.total_tokens or 0),
+                created_at=r.created_at,  # type: ignore[arg-type]
             )
             for r in records
         ]
