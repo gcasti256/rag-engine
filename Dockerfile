@@ -9,7 +9,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source and install
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY rag_engine/ ./rag_engine/
 RUN pip install --no-cache-dir .
 
