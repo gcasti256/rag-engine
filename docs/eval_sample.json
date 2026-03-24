@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What was American Express net revenue in Q3 2024?",
+    "expected_answer": "Net revenue was $15.4 billion"
+  },
+  {
+    "question": "What is the net write-off rate?",
+    "expected_answer": "The net write-off rate is 2.2%"
+  },
+  {
+    "question": "How much did card member spending grow?",
+    "expected_answer": "Card member spending grew 8% on an FX-adjusted basis"
+  },
+  {
+    "question": "What was the earnings per share?",
+    "expected_answer": "Earnings per share was $3.49"
+  },
+  {
+    "question": "What were the total card member loans?",
+    "expected_answer": "Card member loans totaled $134.5 billion"
+  }
+]
