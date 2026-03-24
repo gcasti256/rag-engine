@@ -8,11 +8,18 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy source and install
 COPY pyproject.toml ./
+COPY rag_engine/ ./rag_engine/
 RUN pip install --no-cache-dir .
 
-FROM base AS production
+FROM python:3.11-slim AS production
 
+WORKDIR /app
+
+# Copy installed packages from build stage
+COPY --from=base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=base /usr/local/bin /usr/local/bin
 COPY rag_engine/ ./rag_engine/
 
 EXPOSE 8000
