@@ -6,7 +6,8 @@ from functools import lru_cache
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import text as sa_text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from rag_engine.config import settings
@@ -53,7 +54,7 @@ class ChunkRecord(Base):
 
 
 @lru_cache(maxsize=1)
-def get_engine():
+def get_engine() -> AsyncEngine:
     """Lazily create the async engine."""
     return create_async_engine(
         settings.database_url,
@@ -63,12 +64,12 @@ def get_engine():
     )
 
 
-def get_session_factory():
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Get async session factory."""
     return async_sessionmaker(get_engine(), class_=AsyncSession, expire_on_commit=False)
 
 
-def async_session():
+def async_session() -> AsyncSession:
     """Get an async session context manager."""
     factory = get_session_factory()
     return factory()
@@ -79,12 +80,13 @@ async def init_db() -> None:
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.execute(
-            func.text("CREATE EXTENSION IF NOT EXISTS vector")  # type: ignore[attr-defined]
+            sa_text("CREATE EXTENSION IF NOT EXISTS vector")
         )
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_session() -> AsyncSession:
     """Get a database session."""
+    session: AsyncSession
     async with get_session_factory()() as session:
         return session

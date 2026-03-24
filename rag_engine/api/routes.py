@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 import structlog
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
@@ -137,7 +139,7 @@ async def query_stream(
     if not question.strip():
         raise HTTPException(status_code=400, detail="Question is required")
 
-    async def generate():
+    async def generate() -> AsyncIterator[str]:
         async for token in _query_pipeline.query_stream(
             question=question,
             top_k=top_k,

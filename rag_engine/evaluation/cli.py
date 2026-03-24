@@ -6,6 +6,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from rag_engine.evaluation.metrics import evaluate_response
 from rag_engine.query.pipeline import QueryPipeline
@@ -32,7 +33,7 @@ async def run_eval(eval_file: str, namespace: str = "default") -> None:
     vector_store = VectorStore()
     pipeline = QueryPipeline(vector_store=vector_store)
 
-    results: list[dict] = []
+    results: list[dict[str, Any]] = []
     total_relevance = 0.0
     total_faithfulness = 0.0
     total_precision = 0.0

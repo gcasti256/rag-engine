@@ -264,7 +264,8 @@ class VectorStore:
                 delete(DocumentRecord).where(DocumentRecord.id == document_id)
             )
             await session.commit()
-            return result.rowcount > 0  # type: ignore[return-value]
+            rowcount = getattr(result, "rowcount", 0) or 0
+            return rowcount > 0
 
     async def get_document_count(self, namespace: str | None = None) -> int:
         """Get total document count."""
@@ -273,4 +274,5 @@ class VectorStore:
             if namespace:
                 stmt = stmt.where(DocumentRecord.namespace == namespace)
             result = await session.execute(stmt)
-            return result.scalar_one()
+            count: int = result.scalar_one()
+            return count

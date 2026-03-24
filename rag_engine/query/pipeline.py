@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 import tiktoken
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, AsyncStream
+from openai.types.chat import ChatCompletionChunk
 
 from rag_engine.config import settings
 from rag_engine.models import Citation, QueryResult, RetrievedChunk
@@ -135,12 +136,14 @@ class QueryPipeline:
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
         ]
 
-        stream = await self.client.chat.completions.create(
+        raw_stream = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,  # type: ignore[arg-type]
             temperature=0.1,
             stream=True,
         )
+        assert isinstance(raw_stream, AsyncStream)
+        stream: AsyncStream[ChatCompletionChunk] = raw_stream
 
         async for event in stream:
             if event.choices and event.choices[0].delta.content:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import structlog
 
 from rag_engine.config import settings
@@ -22,11 +24,10 @@ def setup_logging() -> None:
     else:
         processors.append(structlog.dev.ConsoleRenderer())
 
+    log_level: int = getattr(logging, settings.log_level.upper(), logging.INFO)
     structlog.configure(
         processors=processors,
-        wrapper_class=structlog.make_filtering_bound_logger(
-            structlog.get_level_from_name(settings.log_level)
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
