@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import numpy as np
 import structlog
 from rank_bm25 import BM25Okapi
@@ -107,18 +109,18 @@ class VectorStore:
 
             chunks.append(
                 RetrievedChunk(
-                    id=record.id,
-                    content=record.content,
+                    id=str(record.id),
+                    content=str(record.content),
                     metadata=ChunkMetadata(
-                        source=record.source,
-                        document_id=record.document_id,
-                        title=record.title or "",
-                        page_number=record.page_number,
-                        section=record.section or "",
-                        chunk_index=record.chunk_index or 0,
-                        total_chunks=record.total_chunks or 0,
+                        source=str(record.source),
+                        document_id=str(record.document_id),
+                        title=str(record.title or ""),
+                        page_number=int(record.page_number) if record.page_number else None,
+                        section=str(record.section or ""),
+                        chunk_index=int(record.chunk_index or 0),
+                        total_chunks=int(record.total_chunks or 0),
                     ),
-                    score=round(similarity, 4),
+                    score=round(float(similarity), 4),
                     search_method="vector",
                 )
             )
@@ -135,22 +137,6 @@ class VectorStore:
     ) -> list[RetrievedChunk]:
         """BM25 keyword search over chunk content."""
         async with async_session() as session:
-            # Count total chunks to warn if corpus exceeds limit
-            count_stmt = (
-                select(func.count())
-                .select_from(ChunkRecord)
-                .where(ChunkRecord.namespace == namespace)
-            )
-            total_count = (await session.execute(count_stmt)).scalar_one()
-
-            if total_count > self._BM25_MAX_CHUNKS:
-                logger.warning(
-                    "keyword_search.corpus_truncated",
-                    total_chunks=total_count,
-                    limit=self._BM25_MAX_CHUNKS,
-                    namespace=namespace,
-                )
-
             stmt = (
                 select(ChunkRecord)
                 .where(ChunkRecord.namespace == namespace)
@@ -163,36 +149,40 @@ class VectorStore:
         if not records:
             return []
 
-        # Build BM25 index
-        tokenized_corpus = [r.content.lower().split() for r in records]
-        bm25 = BM25Okapi(tokenized_corpus)
-        query_tokens = query.lower().split()
-        scores = bm25.get_scores(query_tokens)
+        # BM25 scoring is CPU-bound; run in a thread to avoid blocking the event loop
+        def _bm25_score() -> list[tuple[int, float]]:
+            tokenized_corpus = [r.content.lower().split() for r in records]
+            bm25 = BM25Okapi(tokenized_corpus)
+            query_tokens = query.lower().split()
+            scores = bm25.get_scores(query_tokens)
 
-        # Get top-k results
-        top_indices = np.argsort(scores)[::-1][:top_k]
+            top_indices = np.argsort(scores)[::-1][:top_k]
+            max_score = float(np.max(scores)) if float(np.max(scores)) > 0 else 1.0
+
+            scored: list[tuple[int, float]] = []
+            for idx in top_indices:
+                if scores[idx] <= 0:
+                    continue
+                scored.append((int(idx), float(scores[idx] / max_score)))
+            return scored
+
+        scored_indices = await asyncio.to_thread(_bm25_score)
 
         chunks: list[RetrievedChunk] = []
-        for idx in top_indices:
-            if scores[idx] <= 0:
-                continue
+        for idx, normalized_score in scored_indices:
             record = records[idx]
-            # Normalize BM25 score to 0-1 range
-            max_score = max(scores) if max(scores) > 0 else 1.0
-            normalized_score = scores[idx] / max_score
-
             chunks.append(
                 RetrievedChunk(
-                    id=record.id,
-                    content=record.content,
+                    id=str(record.id),
+                    content=str(record.content),
                     metadata=ChunkMetadata(
-                        source=record.source,
-                        document_id=record.document_id,
-                        title=record.title or "",
-                        page_number=record.page_number,
-                        section=record.section or "",
-                        chunk_index=record.chunk_index or 0,
-                        total_chunks=record.total_chunks or 0,
+                        source=str(record.source),
+                        document_id=str(record.document_id),
+                        title=str(record.title or ""),
+                        page_number=int(record.page_number) if record.page_number else None,
+                        section=str(record.section or ""),
+                        chunk_index=int(record.chunk_index or 0),
+                        total_chunks=int(record.total_chunks or 0),
                     ),
                     score=round(normalized_score, 4),
                     search_method="bm25",

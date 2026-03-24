@@ -17,10 +17,16 @@ FROM python:3.11-slim AS production
 
 WORKDIR /app
 
+# Create non-root user for security
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --no-create-home appuser
+
 # Copy installed packages from build stage
 COPY --from=base /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=base /usr/local/bin /usr/local/bin
 COPY rag_engine/ ./rag_engine/
+
+USER appuser
 
 EXPOSE 8000
 

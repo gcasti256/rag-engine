@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -25,6 +26,10 @@ from rag_engine.storage import EmbeddingService, VectorStore
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+# Namespace must be alphanumeric with hyphens/underscores, max 64 chars
+_NAMESPACE_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+_VALID_SEARCH_METHODS = {"hybrid", "vector", "keyword"}
+
 logger = structlog.get_logger()
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -42,6 +47,17 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 MAX_UPLOAD_SIZE = settings.max_file_size_mb * 1024 * 1024  # 50MB default
 ALLOWED_EXTENSIONS = {".pdf", ".md", ".txt", ".csv"}
+
+
+def _validate_namespace(namespace: str) -> str:
+    """Validate and return a sanitized namespace string."""
+    if not _NAMESPACE_RE.match(namespace):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid namespace. Must be 1-64 alphanumeric characters, "
+            "hyphens, or underscores.",
+        )
+    return namespace
 
 # Shared instances
 _embedding_service = EmbeddingService()
@@ -114,6 +130,8 @@ async def ingest_document(
             f"Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
         )
 
+    _validate_namespace(namespace)
+
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="File is empty")
@@ -174,6 +192,17 @@ async def query_stream(
     """Stream a RAG query response token by token."""
     if not question.strip():
         raise HTTPException(status_code=400, detail="Question is required")
+    if len(question) > 2000:
+        raise HTTPException(status_code=400, detail="Question must be 2000 characters or fewer")
+    if top_k < 1 or top_k > 50:
+        raise HTTPException(status_code=400, detail="top_k must be between 1 and 50")
+    if search_method not in _VALID_SEARCH_METHODS:
+        valid = ", ".join(sorted(_VALID_SEARCH_METHODS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid search_method. Must be one of: {valid}",
+        )
+    _validate_namespace(namespace)
 
     async def generate() -> AsyncIterator[str]:
         async for token in _query_pipeline.query_stream(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import structlog
@@ -62,8 +63,8 @@ class IngestionPipeline:
 
         logger.info("ingestion.start", filename=filename, type=doc_type, size_mb=round(size_mb, 2))
 
-        # Extract text
-        extraction = extract_text(content, filename)
+        # Extract text (CPU-bound: PDF parsing, etc.) — run in a thread
+        extraction = await asyncio.to_thread(extract_text, content, filename)
         doc_title = title or extraction.title or Path(filename).stem
 
         # Create document record
@@ -74,8 +75,9 @@ class IngestionPipeline:
             namespace=namespace,
         )
 
-        # Chunk
-        chunks = self.chunker.chunk_pages(
+        # Chunk (CPU-bound: tokenization) — run in a thread
+        chunks = await asyncio.to_thread(
+            self.chunker.chunk_pages,
             pages=extraction.pages,
             document_id=doc.id,
             source=filename,

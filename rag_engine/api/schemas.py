@@ -12,7 +12,7 @@ class QueryRequest(BaseModel):
 
     question: str = Field(..., min_length=1, max_length=2000)
     top_k: int = Field(default=settings.default_top_k, ge=1, le=50)
-    namespace: str = "default"
+    namespace: str = Field(default="default", pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     search_method: str = Field(default="hybrid", pattern="^(hybrid|vector|keyword)$")
 
 

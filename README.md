@@ -140,9 +140,8 @@ Response:
 
 ```bash
 curl -X POST http://localhost:8000/query \
-  -F "question=What was the net revenue in Q3 2024?" \
-  -F "search_method=hybrid" \
-  -F "namespace=financial"
+  -H "Content-Type: application/json" \
+  -d '{"question": "What was the net revenue in Q3 2024?", "search_method": "hybrid", "namespace": "financial"}'
 ```
 
 Response:

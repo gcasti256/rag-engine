@@ -24,11 +24,12 @@ env/
 .env
 .env.local
 
-# Testing
+# Testing / Linting
 .coverage
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # OS
 .DS_Store
@@ -40,6 +41,7 @@ docker-compose.override.yml
 # Node (frontend)
 frontend/node_modules/
 frontend/dist/
+*.tsbuildinfo
 
 # Data
 data/
